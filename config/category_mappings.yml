@@ -1,0 +1,131 @@
+category:
+  transport:
+    - flo
+    - stm-longueuil
+  medical:
+    - chiro
+    - acupuncture
+    - medavie-blue
+    - transaction-withdrawal  # psychologue carole
+  monthly:
+    - fizz
+    - videotron
+    - hydrosolution
+  tesla:
+    - rbc-loan-pymt  # tesla car payment
+  mortgage:
+    - banque-nationale  # mortgage condo and valois
+  insurance:
+    - preauthorized-debit-beneva  #mortgage insurance
+    - a5100101283-001-promutuel  # tesla car insurance
+    - alayacare-insurance  # andy part of family insurance
+  groceries:
+    - super-c
+    - wal-mart
+    - provigo
+    - couche-tard
+    - iga
+    - metro
+    - maxi
+    - ultramar
+    - costco
+    - fruiterie
+    - jarochos
+    - epicerie
+  grocery_funk:
+    - saq
+    - dollarama
+  restaurants:
+    - tim-hortons
+    - starbucks
+    - mcdonald
+    - harveys
+    - dairy-queeen
+    - dairy-queen
+    - uber-eats
+    - arriba-burrito
+    - sushi
+    - gateau
+    - subway
+    - 7853351-canada  # subway - varennes
+    - arahova
+    - thai-express
+    - tikiming
+    - montaza  # small resto in place desormeaux
+  pharmacy:
+    - jean-coutu
+    - pharmaprix
+  tools:
+    - rona
+    - cdn-tire
+  online-purchases:
+    - amazon
+    - apple-store
+    - apple.com
+    - apple
+    - amzn
+    - epic-games
+    - jb-games
+    - michaels  # art and paint store
+    - digital-river  # google - fitbit
+  extra:
+    - winners
+    - tabagie
+    - bota-bota
+    - agence-de-mobilite  # parking mtl
+    - lenca-canada
+    - saaq
+  payment:
+    - deposit
+    - banking-machine-atm
+    - payment
+    - paiement
+    - scotiabank-transit
+    - alaya-care-inc
+    - trsf-from/de-acct  # transfer from bmo to visa
+
+  # BANKING ACCOUNT section start here
+  banking_fee:
+    - programme-pratique
+    - service-charge
+    - fixed-monthly-fees
+    - interac-e-transfer-service
+    - monthly-transaction-fees
+  andy_income:
+    - infoprime
+    - pierre-pouzol
+  alex_income:
+    - capelya-pedini
+    - paie
+    - payroll
+  e_transfer:
+    - e-transfer
+    - interac
+  credit_card_pmt:
+    - american-expre
+    - visa,-bmo
+    - preauthorized-debit-sxslx-bns-preauth-pmt
+  credit_line:
+    - tf-0000000022182671725
+    - scotialine
+
+person:
+  alex:
+    - fizz
+    - hydrosolution
+    - preauthorized-debit-02020231221-banque-nationale  # mortgage valois
+    - fixed-monthly-fees
+    - interac-e-transfer-service
+    - monthly-transaction-fees
+    - alaya-care-inc
+  andy:
+    - alayacare-insurance
+    - preauthorized-debit-02020231229-banque-nationale  # mortgage condo
+  payment:
+    - deposit
+    - banking-machine-atm
+    - payment
+    - paiement
+    - scotiabank-transit
+    - trsf-from/de-acct  # transfer from bmo to visa
+

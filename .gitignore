@@ -1,0 +1,17 @@
+# Working and source data files
+source_files/
+*.txt
+*.csv
+*.xls*
+*.log
+
+# IDE files
+.idea/
+*.iml
+
+# mac files
+*.DS_Store
+
+# Python files
+*.pyc
+
