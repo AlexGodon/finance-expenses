@@ -83,7 +83,7 @@ def read_file(file_path):
     # Cleaning and processing DataFrame
     df = df.dropna(how='all')  # Drop rows where all elements are NaN
     df.columns = df.columns.str.strip()  # Strip whitespace from column names
-    # This is a safety to make sure, Expense and Credit are strings, converted later to int.
+    # This is a safety to make sure, 'Expense' and 'Credit' are strings, converted later to int.
     for col in col_types.keys():
         if col in df.columns:
             df[col] = df[col].astype(col_types[col])
@@ -107,7 +107,7 @@ def standardize_date_format(df, date_column):
 def retain_specific_columns(df, file_type):
     # Specific columns to retain
     if file_type == 'bank_account':
-        desired_columns = ["Transaction Datee", "Description", "Trans Amount"]
+        desired_columns = ["Transaction Date", "Description", "Trans Amount"]
     else:  # credit card
         desired_columns = ["Transaction Date", "Description", "Trans Amount"]
 
@@ -116,15 +116,19 @@ def retain_specific_columns(df, file_type):
 
 
 def process_chequing_transactions(df, file_type):
-    if file_type == 'bank_account' and 'Expense' in df.columns and 'Credit' in df.columns:
-        # Convert 'Expense' and 'Credit' columns to numeric, handling non-numeric entries
-        df['Expense'] = pd.to_numeric(df['Expense'].str.replace('$', '').str.replace(',', '').str.replace('"', '').
-                                      replace('Not applicable', '0'), errors='coerce').fillna(0)
-        df['Credit'] = pd.to_numeric(df['Credit'].str.replace('$', '').str.replace(',', '').str.replace('"', '').
-                                     replace('Not applicable', '0'), errors='coerce').fillna(0)
+    if file_type == 'bank_account':
+        if 'Expense' in df.columns and 'Credit' in df.columns:
+            # Convert 'Expense' and 'Credit' columns to numeric, handling non-numeric entries
+            df['Expense'] = pd.to_numeric(df['Expense'].str.replace('$', '').str.replace(',', '').str.replace('"', '').
+                                          replace('Not applicable', '0'), errors='coerce').fillna(0)
+            df['Credit'] = pd.to_numeric(df['Credit'].str.replace('$', '').str.replace(',', '').str.replace('"', '').
+                                         replace('Not applicable', '0'), errors='coerce').fillna(0)
 
-        # Subtract Expense from Credit to get the Trans Amount
-        df['Trans Amount'] = df['Credit'] - df['Expense']
+            # Subtract Expense from Credit to get the Trans Amount
+            df['Trans Amount'] = df['Expense'] - df['Credit']
+        else:  # bmo
+            df['Trans Amount'] = df['Trans Amount'] * -1
+
     return df
 
 
