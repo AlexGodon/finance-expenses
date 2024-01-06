@@ -39,9 +39,28 @@ def generate_summary_csv(df, full_path_new_file):
             df.at[index, 'Type'] = 'Credit'
 
         # Check for each person
-        for person, keywords in person_configs.items():
-            if any(keyword in description for keyword in keywords):
+        for person, conditions in person_configs.items():
+            keywords = conditions['keywords']
+            if 'all_bmo' in keywords and 'bmo' in df.at[index, 'file_name']:
                 df.at[index, 'Person'] = person.capitalize()
+            elif 'all_nbc' in keywords and 'nbc' in df.at[index, 'file_name']:
+                df.at[index, 'Person'] = person.capitalize()
+            else:
+                for keyword in keywords:
+                    if keyword in description:
+                        amounts = None
+                        if conditions.get('amounts'):  # safety net, incase amount not defined.
+                            amounts = conditions['amounts'].get(keyword)
+
+                        if amounts:
+                            if df.at[index, 'Trans Amount'] in amounts:
+                                df.at[index, 'Person'] = person.capitalize()
+                                break
+                        else:
+                            df.at[index, 'Person'] = person.capitalize()
+                            break
+
+            if df.at[index, 'Person'] != 'Both':
                 break  # Assuming one person per row, both is set by default
 
     df.to_csv(full_path_new_file, index=False)
@@ -95,13 +114,67 @@ def read_file(file_path):
 
 
 def standardize_date_format(df, date_column):
+    # Convert start and end dates to datetime
+    start_date = pd.to_datetime('2023-12-01')
+    end_date = pd.to_datetime('2023-12-31')
+    # Convert date_column to datetime, trying different formats
     for format in ['%d-%b-%y', '%Y%m%d', '%m/%d/%Y', '%Y-%m-%d']:
         try:
             df[date_column] = pd.to_datetime(df[date_column], format=format)
+            break  # Exit the loop if conversion is successful
         except:
             pass
-    df[date_column] = df[date_column].dt.strftime('%Y-%m-%d')
-    return df
+
+    # Filter the DataFrame and create an explicit copy
+    filtered_df = df[(df[date_column] >= start_date) & (df[date_column] <= end_date)].copy()
+    # Format the date column
+    filtered_df[date_column] = filtered_df[date_column].dt.strftime('%Y-%m-%d')
+
+    return filtered_df
+
+
+# Define a function to insert subtotals within the DataFrame based on file_name changes
+def insert_subtotals(df, group_by_column, subtotal_column):
+    # Sort the DataFrame by the column we want to group by to ensure subtotals insert correctly
+    df_sorted = df.sort_values(by=group_by_column).reset_index(drop=True)
+    # Add a row for each change in file_name
+    # Create a new column to detect changes in 'file_name'
+    df_sorted['file_name_change'] = df_sorted[group_by_column].ne(df_sorted[group_by_column].shift())
+
+    # Filter to get the indexes where change occurred
+    change_indexes = df_sorted[df_sorted['file_name_change']].index
+    iterations_cnt = len(change_indexes)
+
+    # Create new rows to be inserted at the change_indexes
+    new_rows = [{'Transaction Date': None, 'Description': 'Subtotal', 'Trans Amount': None,
+                 'file_name': ''}] * iterations_cnt
+
+    new_df = pd.DataFrame()
+    last_index = df_sorted.index[-1]
+    current_iteration = 0
+    # Insert the new rows into the DataFrame
+    for idx, new_row in zip(change_indexes, new_rows):
+        idx += current_iteration
+        if current_iteration == iterations_cnt - 1:  # Last iteration, -1 as iteration starts at 0
+            next_idx = last_index + current_iteration
+        else:
+            next_idx = change_indexes[current_iteration+1] + current_iteration
+            # -1 to have 1 row above next file_name change
+            next_idx -= 1
+
+        sum_trans_amount = df_sorted.loc[idx:next_idx, subtotal_column].sum()
+
+        new_row[subtotal_column] = round(sum_trans_amount, 2)
+        new_row['Description'] = 'Subtotal {}'.format(df_sorted.at[idx, group_by_column])
+        df_sorted = (pd.concat([df_sorted.iloc[:next_idx+1], pd.DataFrame([new_row]), df_sorted.iloc[next_idx+1:]])
+                     .reset_index(drop=True))
+
+        current_iteration += 1
+
+    # Drop the 'file_name_change' as it is no longer needed
+    df_sorted.drop(columns=['file_name_change'], inplace=True)
+
+    return df_sorted
 
 
 def retain_specific_columns(df, file_type):
@@ -175,11 +248,15 @@ bank_account_df = pd.concat(all_bank_account_dfs, ignore_index=True)
 # Add Extra transactions not seen in bank accounts
 first_day_previous_month = (datetime.today().replace(day=1) - timedelta(days=1)).replace(day=1).date()
 new_row = pd.DataFrame([{'Transaction Date': first_day_previous_month,
-                         'Description': 'Alayacare-insurance', 'Trans Amount': 70.00, 'file_name': 'extra.csv'}])
+                         'Description': 'Alayacare-insurance', 'Trans Amount': 70.00, 'file_name': 'cibc.csv'}])
 bank_account_df = pd.concat([bank_account_df, new_row], ignore_index=True)
 
 # Make sure directory where the files generated will be dropped / created.
 os.makedirs(destination_directory, exist_ok=True)
+
+# Add subtotals to each file_name changes
+credit_card_df = insert_subtotals(credit_card_df, 'file_name', 'Trans Amount')
+bank_account_df = insert_subtotals(bank_account_df, 'file_name', 'Trans Amount')
 
 # Create a new calculation of the summary of all the data.
 generate_summary_csv(credit_card_df,

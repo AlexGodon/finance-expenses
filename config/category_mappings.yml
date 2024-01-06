@@ -7,9 +7,8 @@ category:
     - acupuncture
     - medavie-blue
     - transaction-withdrawal  # psychologue carole
-  monthly:
+  monthly_alex:
     - fizz
-    - videotron
     - hydrosolution
   tesla:
     - rbc-loan-pymt  # tesla car payment
@@ -58,6 +57,8 @@ category:
   tools:
     - rona
     - cdn-tire
+  mobile-internet:
+    - videotron
   online-purchases:
     - amazon
     - apple-store
@@ -81,7 +82,6 @@ category:
     - payment
     - paiement
     - scotiabank-transit
-    - alaya-care-inc
     - trsf-from/de-acct  # transfer from bmo to visa
 
   # BANKING ACCOUNT section start here
@@ -98,6 +98,8 @@ category:
     - capelya-pedini
     - paie
     - payroll
+    - interac-e-transfer
+    - alaya-care-inc
   e_transfer:
     - e-transfer
     - interac
@@ -111,21 +113,35 @@ category:
 
 person:
   alex:
-    - fizz
-    - hydrosolution
-    - preauthorized-debit-02020231221-banque-nationale  # mortgage valois
-    - fixed-monthly-fees
-    - interac-e-transfer-service
-    - monthly-transaction-fees
-    - alaya-care-inc
+    keywords:
+      - all_bmo
+      - all_nbc
+      - fizz
+      - hydrosolution
+      - preauthorized-debit-02020231221-banque-nationale  # mortgage valois
+      - fixed-monthly-fees
+      - interac-e-transfer-service
+      - monthly-transaction-fees
+      - alaya-care-inc
+      - alex-deslongchamps-godon  # e-transfert from alex to alex
+      - electronic-funds-transfer-preauthorized-debit
+    amounts:
+      electronic-funds-transfer-preauthorized-debit:
+        - 2179.76
   andy:
-    - alayacare-insurance
-    - preauthorized-debit-02020231229-banque-nationale  # mortgage condo
+    keywords:
+      - alayacare-insurance
+      - electronic-funds-transfer-preauthorized-debit
+    amounts:
+      electronic-funds-transfer-preauthorized-debit:
+        - 120.62
+        - 551.75
   payment:
-    - deposit
-    - banking-machine-atm
-    - payment
-    - paiement
-    - scotiabank-transit
-    - trsf-from/de-acct  # transfer from bmo to visa
+    keywords:
+      - deposit
+      - banking-machine-atm
+      - payment
+      - paiement
+      - scotiabank-transit
+      - trsf-from/de-acct  # transfer from bmo to visa
 
