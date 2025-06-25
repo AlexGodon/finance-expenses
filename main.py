@@ -115,10 +115,10 @@ def read_file(file_path):
 
 def standardize_date_format(df, date_column):
     # Convert start and end dates to datetime
-    start_date = pd.to_datetime('2023-12-01')
-    end_date = pd.to_datetime('2023-12-31')
+    start_date = pd.to_datetime('2023-11-01')
+    end_date = pd.to_datetime('2023-11-30')
     # Convert date_column to datetime, trying different formats
-    for format in ['%d-%b-%y', '%Y%m%d', '%m/%d/%Y', '%Y-%m-%d']:
+    for format in ['%d-%b-%y', '%d %b. %Y', '%Y%m%d', '%m/%d/%Y', '%Y-%m-%d']:
         try:
             df[date_column] = pd.to_datetime(df[date_column], format=format)
             break  # Exit the loop if conversion is successful
@@ -146,7 +146,7 @@ def insert_subtotals(df, group_by_column, subtotal_column):
     iterations_cnt = len(change_indexes)
 
     # Create new rows to be inserted at the change_indexes
-    new_rows = [{'Transaction Date': None, 'Description': 'Subtotal', 'Trans Amount': None,
+    new_rows = [{'Transaction Date': None, 'Description': 'Subtotal file_name', 'Trans Amount': None,
                  'file_name': ''}] * iterations_cnt
 
     new_df = pd.DataFrame()
@@ -241,25 +241,31 @@ for file_path in file_paths:
     else:
         all_bank_account_dfs.append(df)
 
+if all_bank_account_dfs or all_credit_card_dfs:
+    # Make sure directory where the files generated will be dropped / created.
+    os.makedirs(destination_directory, exist_ok=True)
+
 # Combining DataFrames
-credit_card_df = pd.concat(all_credit_card_dfs, ignore_index=True)
-bank_account_df = pd.concat(all_bank_account_dfs, ignore_index=True)
+if all_credit_card_dfs:
+    credit_card_df = pd.concat(all_credit_card_dfs, ignore_index=True)
+    # Add subtotals to each file_name changes
+    credit_card_df = insert_subtotals(credit_card_df, 'file_name', 'Trans Amount')
 
-# Add Extra transactions not seen in bank accounts
-first_day_previous_month = (datetime.today().replace(day=1) - timedelta(days=1)).replace(day=1).date()
-new_row = pd.DataFrame([{'Transaction Date': first_day_previous_month,
-                         'Description': 'Alayacare-insurance', 'Trans Amount': 70.00, 'file_name': 'cibc.csv'}])
-bank_account_df = pd.concat([bank_account_df, new_row], ignore_index=True)
+    # Create a new calculation of the summary of all the data.
+    generate_summary_csv(credit_card_df,
+                         os.path.join(destination_directory, 'credit_card_results.csv'))
+if all_bank_account_dfs:
+    bank_account_df = pd.concat(all_bank_account_dfs, ignore_index=True)
 
-# Make sure directory where the files generated will be dropped / created.
-os.makedirs(destination_directory, exist_ok=True)
+    # Add Extra transactions not seen in bank accounts
+    first_day_previous_month = (datetime.today().replace(day=1) - timedelta(days=1)).replace(day=1).date()
+    new_row = pd.DataFrame([{'Transaction Date': first_day_previous_month,
+                             'Description': 'Alayacare-insurance', 'Trans Amount': 70.00, 'file_name': 'cibc.csv'}])
+    bank_account_df = pd.concat([bank_account_df, new_row], ignore_index=True)
 
-# Add subtotals to each file_name changes
-credit_card_df = insert_subtotals(credit_card_df, 'file_name', 'Trans Amount')
-bank_account_df = insert_subtotals(bank_account_df, 'file_name', 'Trans Amount')
+    # Add subtotals to each file_name changes
+    bank_account_df = insert_subtotals(bank_account_df, 'file_name', 'Trans Amount')
 
-# Create a new calculation of the summary of all the data.
-generate_summary_csv(credit_card_df,
-                     os.path.join(destination_directory, 'credit_card_results.csv'))
-generate_summary_csv(bank_account_df,
-                     os.path.join(destination_directory, 'bank_account_results.csv'))
+    # Create a new calculation of the summary of all the data.
+    generate_summary_csv(bank_account_df,
+                         os.path.join(destination_directory, 'bank_account_results.csv'))

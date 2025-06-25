@@ -110,6 +110,8 @@ category:
   credit_line:
     - tf-0000000022182671725
     - scotialine
+  subtotals:
+    - subtotal
 
 person:
   alex:
@@ -118,7 +120,6 @@ person:
       - all_nbc
       - fizz
       - hydrosolution
-      - preauthorized-debit-02020231221-banque-nationale  # mortgage valois
       - fixed-monthly-fees
       - interac-e-transfer-service
       - monthly-transaction-fees
