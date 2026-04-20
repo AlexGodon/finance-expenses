@@ -1,9 +1,14 @@
-# Working and source data files
-source_files/
+# Extensions to ignore
 *.txt
+!requirements.txt
 *.csv
 *.xls*
 *.log
+
+# Working folders
+source_files/*
+output/*
+past_ai_chats/*
 
 # IDE files
 .idea/

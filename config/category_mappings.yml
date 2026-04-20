@@ -1,148 +1,159 @@
-category:
-  transport:
-    - flo
-    - stm-longueuil
-  medical:
+utilities:
+  keywords:
+    fizz:
+    internet:
+    - helix
+    videotron-mobile:
+    - mobile
+    videotron:
+    prime-video:
+    - prime-video
+    - primevideo
+    - amazon.ca-prime
+    apple-music:
+    - music
+    apple-icloud:
+    - apple-icloud
+    - icloud
+    apple:
+    - apple.com
+    - apple-store
+    - apple
+    netflix:
+    hydro-quebec:
+    - hydro-quebec
+    flexiti:
+    richard-income:
+    - keyword: interac-e-transfer
+      amount: 40
+transport:
+  keywords:
+    flo:
+    stm-longueuil:
+interest-earned:
+  keywords:
+    interest-earned:
+medical:
+  keywords:
+    chiro:
     - chiro
-    - acupuncture
-    - medavie-blue
-    - transaction-withdrawal  # psychologue carole
-  monthly_alex:
-    - fizz
-    - hydrosolution
-  tesla:
-    - rbc-loan-pymt  # tesla car payment
-  mortgage:
-    - banque-nationale  # mortgage condo and valois
-  insurance:
-    - preauthorized-debit-beneva  #mortgage insurance
-    - a5100101283-001-promutuel  # tesla car insurance
-    - alayacare-insurance  # andy part of family insurance
-  groceries:
-    - super-c
-    - wal-mart
-    - provigo
-    - couche-tard
-    - iga
-    - metro
-    - maxi
-    - ultramar
-    - costco
-    - fruiterie
-    - jarochos
-    - epicerie
-  grocery_funk:
-    - saq
-    - dollarama
-  restaurants:
-    - tim-hortons
-    - starbucks
-    - mcdonald
-    - harveys
+    - chiropractor
+    acupuncture:
+    medavie-blue:
+    transaction-withdrawal:
+    clinique-dentaire:
+tesla:
+  keywords:
+    car-payment:
+      - rbc-loan-pymt
+    car-insurance:
+      - debit-to-promutuel36
+mortgages:
+  keywords:
+    mortgage-payments:
+    - debit-to-bnc:
+    mortgage-insurances:
+    - pre-authorized-debit-to-beneva:
+groceries:
+  keywords:
+    super-c:
+    wal-mart:
+    provigo:
+    couche-tard:
+    iga:
+    metro:
+    maxi:
+    ultramar:
+    costco:
+    fruiterie:
+    jarochos:
+    epicerie:
+    boucherie-brunelle:
+    filet-gourmet-vare:
+    taiyo:
+grocery_junk:
+  keywords:
+    saq:
+    dollarama:
+restaurants:
+  keywords:
+    tim-hortons:
+    starbucks:
+    mcdonald:
+    harveys:
+    dairy-queen:
     - dairy-queeen
     - dairy-queen
-    - uber-eats
-    - arriba-burrito
-    - sushi
-    - gateau
-    - subway
-    - 7853351-canada  # subway - varennes
-    - arahova
-    - thai-express
-    - tikiming
-    - montaza  # small resto in place desormeaux
-  pharmacy:
-    - jean-coutu
-    - pharmaprix
-  tools:
-    - rona
-    - cdn-tire
-  mobile-internet:
-    - videotron
-  online-purchases:
-    - amazon
-    - apple-store
-    - apple.com
-    - apple
+    uber-eats:
+    arriba-burrito:
+    sushi:
+    gateau:
+    subway:
+    7853351-canada:
+    arahova:
+    thai-express:
+    tikiming:
+    montaza:
+    benny:
+    pizza:
+    tit-reveil-varennes:
+    poulet-rouge:
+    alfa-hot-dog:
+    restaurant:
+pharmacy:
+  keywords:
+    jean-coutu:
+    pharmaprix:
+renovations:
+  keywords:
+    rona:
+    cdn-tire:
+    canac:
+    facebk:
+    tribunal:
+    hydrosolution:
+online-purchases:
+  keywords:
+    epic-games:
+    jb-games:
+    michaels:
+    amazon:
     - amzn
-    - epic-games
-    - jb-games
-    - michaels  # art and paint store
-    - digital-river  # google - fitbit
-  extra:
-    - winners
-    - tabagie
-    - bota-bota
-    - agence-de-mobilite  # parking mtl
-    - lenca-canada
-    - saaq
-  payment:
-    - deposit
-    - banking-machine-atm
-    - payment
-    - paiement
-    - scotiabank-transit
-    - trsf-from/de-acct  # transfer from bmo to visa
-
-  # BANKING ACCOUNT section start here
-  banking_fee:
-    - programme-pratique
-    - service-charge
-    - fixed-monthly-fees
-    - interac-e-transfer-service
-    - monthly-transaction-fees
-  andy_income:
-    - infoprime
-    - pierre-pouzol
-  alex_income:
-    - capelya-pedini
-    - paie
-    - payroll
-    - interac-e-transfer
-    - alaya-care-inc
-  e_transfer:
-    - e-transfer
-    - interac
-  credit_card_pmt:
-    - american-expre
-    - visa,-bmo
-    - preauthorized-debit-sxslx-bns-preauth-pmt
-  credit_line:
-    - tf-0000000022182671725
-    - scotialine
-  subtotals:
-    - subtotal
-
-person:
-  alex:
-    keywords:
-      - all_bmo
-      - all_nbc
-      - fizz
-      - hydrosolution
-      - fixed-monthly-fees
-      - interac-e-transfer-service
-      - monthly-transaction-fees
-      - alaya-care-inc
-      - alex-deslongchamps-godon  # e-transfert from alex to alex
-      - electronic-funds-transfer-preauthorized-debit
-    amounts:
-      electronic-funds-transfer-preauthorized-debit:
-        - 2179.76
-  andy:
-    keywords:
-      - alayacare-insurance
-      - electronic-funds-transfer-preauthorized-debit
-    amounts:
-      electronic-funds-transfer-preauthorized-debit:
-        - 120.62
-        - 551.75
-  payment:
-    keywords:
-      - deposit
-      - banking-machine-atm
-      - payment
-      - paiement
-      - scotiabank-transit
-      - trsf-from/de-acct  # transfer from bmo to visa
-
+    - amazon
+extra:
+  keywords:
+    winners:
+    tabagie:
+    bota-bota:
+    agence-de-mobilite:
+    lenca-canada:
+    saaq:
+banking_fee:
+  keywords:
+    programme-pratique:
+    service-charge:
+    fixed-monthly-fees:
+    interac-e-transfer-service:
+    monthly-transaction-fees:
+andy_income:
+  keywords:
+    rental-income:
+    - keyword: interac-e-transfer
+      amount: 2100
+    infoprimes:
+alex_income:
+  keywords:
+    rental-income:
+    - keyword: interac-e-transfer
+      amount: 2925
+    alaya:
+scotia_credit_line:
+  keywords:
+    tf-0000000022182671725:
+    scotialine:
+unknown e-transfer in:
+  keywords:
+    transfer-in:
+unknown e-transfer out:
+  keywords:
+    transfer-out:

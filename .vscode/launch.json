@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run main.py (accumulate)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "args": ["--month", "2026-04", "--file", "financial_report_2026-04-19_2132.xlsx"],
+            "cwd": "${workspaceFolder}",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "console": "internalConsole",
+            "justMyCode": false,
+        },
+        {
+            "name": "Run main.py (new file)",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "args": ["--month", "2026-03", "--timestamp"],
+            "cwd": "${workspaceFolder}",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "console": "internalConsole",
+            "justMyCode": false,
+        }
+    ]
+}
