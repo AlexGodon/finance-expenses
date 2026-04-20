@@ -1,4 +1,7 @@
 import os
+import calendar
+from datetime import date
+import yaml
 import pandas as pd
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Font, Alignment
@@ -61,12 +64,12 @@ class ExcelReporter:
     def __init__(self, file_path):
         self.file_path = file_path
 
-    def write(self, df, category_order=None):
+    def write(self, df, category_map=None):
         os.makedirs(os.path.dirname(self.file_path) or '.', exist_ok=True)
 
         df = df.copy()
         df['month'] = df['date'].dt.to_period('M')
-        self.category_order = category_order
+        self.category_map = category_map or {}
 
         if os.path.exists(self.file_path):
             wb = load_workbook(self.file_path)
@@ -123,8 +126,26 @@ class ExcelReporter:
             .sum()
             .reset_index()
         )
-        if self.category_order:
-            order_map = {cat: i for i, cat in enumerate(self.category_order)}
+        categories_with_data = set(summary['category'].unique())
+
+        if self.category_map:
+            full_rows = []
+            for cat, subcats in self.category_map.items():
+                if cat not in categories_with_data:
+                    continue
+                for sub in subcats:
+                    full_rows.append({'category': cat, 'subcategory': sub, 'amount': 0.0})
+            if full_rows:
+                full_df = pd.DataFrame(full_rows)
+                summary = pd.concat([summary, full_df], ignore_index=True)
+                summary = (
+                    summary.groupby(['category', 'subcategory'])['amount']
+                    .sum()
+                    .reset_index()
+                )
+
+        if self.category_map:
+            order_map = {cat: i for i, cat in enumerate(self.category_map.keys())}
             summary = summary.sort_values(
                 'category', key=lambda col: col.map(
                     lambda c: order_map.get(c, len(order_map))
@@ -232,6 +253,96 @@ class ExcelReporter:
             ws.column_dimensions['A'].width = 30
             ws.column_dimensions['B'].width = 15
 
+    def _load_monthly_mappings(self):
+        path = os.path.join('config', 'monthly_mappings.yml')
+        if not os.path.exists(path):
+            return None
+        with open(path, 'r', encoding='utf-8') as f:
+            data = yaml.safe_load(f)
+        if not data or 'budget' not in data:
+            return None
+        return data['budget']
+
+    def _build_sumifs_formula(self, entry, data_start, data_end):
+        """Build the SUMIFS formula string for column C based on the entry's formula type."""
+        formula = entry.get('formula', {})
+        ftype = formula.get('type', 'none')
+        def col(letter):
+            return f'{letter}{data_start}:{letter}{data_end}'
+
+        if ftype == 'none':
+            return 0
+
+        if ftype in ('category', 'subcategory'):
+            cat = formula.get('category', '')
+            sub = formula.get('subcategory')
+            if sub:
+                return f'=SUMIFS({col("C")},{col("D")},"{cat}",{col("E")},"{sub}")'
+            return f'=SUMIFS({col("C")},{col("D")},"{cat}")'
+
+        if ftype == 'lookups':
+            parts = []
+            for lk in formula.get('lookups', []):
+                cat = lk.get('category', '')
+                sub = lk.get('subcategory')
+                if sub:
+                    parts.append(f'SUMIFS({col("C")},{col("D")},"{cat}",{col("E")},"{sub}")')
+                else:
+                    parts.append(f'SUMIFS({col("C")},{col("D")},"{cat}")')
+            return '=' + '+'.join(parts) if parts else 0
+
+        if ftype == 'source_negatives':
+            sources = formula.get('sources', [])
+            parts = [f'SUMIFS({col("C")},{col("F")},"{src}",{col("C")},"<"&0)' for src in sources]
+            return '=' + '+'.join(parts)
+
+        return 0
+
+    def _write_budget_section(self, ws, month, tbl_last_row, row_cursor):
+        """Write the Monthly Budget section. Returns next available row.
+        txn_last_row is the last row of transaction data (for scoping SUMIFS ranges)."""
+        budget = self._load_monthly_mappings()
+        if budget is None:
+            return row_cursor
+
+        data_start = 3  # row 1 is header, row 2 is table header
+        data_end = tbl_last_row
+
+        year = month.year
+        mon = month.month
+        last_day = calendar.monthrange(year, mon)[1]
+
+        ws.cell(row=row_cursor, column=1, value='Monthly Budget').font = BOLD_LARGE
+        row_cursor += 1
+
+        for ci, header in enumerate(['date', 'Description', 'Default', 'Actual', 'Diff'], start=1):
+            ws.cell(row=row_cursor, column=ci, value=header).font = HEADER_FONT
+        row_cursor += 1
+
+        first_data_row = row_cursor
+        for entry in budget:
+            day = min(int(entry.get('month-day', 1)), last_day)
+            dt = date(year, mon, day)
+            ws.cell(row=row_cursor, column=1, value=dt.strftime(DATE_DISPLAY_FORMAT))
+
+            ws.cell(row=row_cursor, column=2, value=entry.get('description', ''))
+            ws.cell(row=row_cursor, column=3, value=entry.get('default', 0))
+            ws.cell(row=row_cursor, column=4,
+                    value=self._build_sumifs_formula(entry, data_start, data_end))
+            ws.cell(row=row_cursor, column=5, value=f'=D{row_cursor}-C{row_cursor}')
+            row_cursor += 1
+
+        ws.cell(row=row_cursor, column=2, value='Total').font = BOLD
+        ws.cell(row=row_cursor, column=3,
+                value=f'=SUM(C{first_data_row}:C{row_cursor - 1})').font = BOLD
+        ws.cell(row=row_cursor, column=4,
+                value=f'=SUM(D{first_data_row}:D{row_cursor - 1})').font = BOLD
+        ws.cell(row=row_cursor, column=5,
+                value=f'=SUM(E{first_data_row}:E{row_cursor - 1})').font = BOLD
+        row_cursor += 1
+
+        return row_cursor
+
     def _write_month_tab(self, wb, month, month_df):
         tab_name = _month_tab_name(month)
 
@@ -257,6 +368,8 @@ class ExcelReporter:
                 ws.cell(row=row_cursor, column=ci, value=data_row[col])
             row_cursor += 1
 
+        tbl_last_row = row_cursor - 1
+
         row_cursor += 2
 
         duplicates = find_duplicates(month_df)
@@ -275,6 +388,9 @@ class ExcelReporter:
                 for ci, col in enumerate(columns, start=1):
                     ws.cell(row=row_cursor, column=ci, value=data_row[col])
                 row_cursor += 1
+
+        row_cursor += 2
+        self._write_budget_section(ws, month, tbl_last_row, row_cursor)
 
         ws.column_dimensions['A'].width = 14
         ws.column_dimensions['B'].width = 55

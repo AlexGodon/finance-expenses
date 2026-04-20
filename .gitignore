@@ -10,6 +10,9 @@ source_files/*
 output/*
 past_ai_chats/*
 
+# Private config
+config/monthly_mappings.yml
+
 # IDE files
 .idea/
 *.iml

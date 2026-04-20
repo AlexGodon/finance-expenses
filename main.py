@@ -107,9 +107,12 @@ def main():
         output_path = os.path.join('output', args.file)
     else:
         output_path = OUTPUT_PATH
-    category_order = list(categorizer.config.keys())
+    category_map = {
+        cat: list(rules.get('keywords', {}).keys())
+        for cat, rules in categorizer.config.items()
+    }
     reporter = ExcelReporter(output_path)
-    reporter.write(df, category_order)
+    reporter.write(df, category_map)
     print(f"   Report saved to {output_path}\n")
 
     print("=== Done ===")

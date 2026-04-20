@@ -2,30 +2,31 @@ utilities:
   keywords:
     fizz:
     internet:
-    - helix
+      - helix
     videotron-mobile:
-    - mobile
+      - mobile
     videotron:
     prime-video:
-    - prime-video
-    - primevideo
-    - amazon.ca-prime
+      - prime-video
+      - primevideo
+      - amazon.ca-prime
     apple-music:
-    - music
+      - music
     apple-icloud:
-    - apple-icloud
-    - icloud
+      - apple-icloud
+      - icloud
     apple:
-    - apple.com
-    - apple-store
-    - apple
+      - apple.com
+      - apple-store
+      - apple
     netflix:
-    hydro-quebec:
-    - hydro-quebec
     flexiti:
     richard-income:
-    - keyword: interac-e-transfer
-      amount: 40
+      - keyword: interac-e-transfer
+        amount: 40
+hydro-electric:
+  keywords:
+    hydro-quebec:
 transport:
   keywords:
     flo:
@@ -36,8 +37,8 @@ interest-earned:
 medical:
   keywords:
     chiro:
-    - chiro
-    - chiropractor
+      - chiro
+      - chiropractor
     acupuncture:
     medavie-blue:
     transaction-withdrawal:
@@ -51,9 +52,11 @@ tesla:
 mortgages:
   keywords:
     mortgage-payments:
-    - debit-to-bnc:
+      - debit-to-bnc
     mortgage-insurances:
-    - pre-authorized-debit-to-beneva:
+      - pre-authorized-debit-to-beneva
+    mortgage-taxes:
+      - mortgages-taxes
 groceries:
   keywords:
     super-c:
@@ -82,8 +85,8 @@ restaurants:
     mcdonald:
     harveys:
     dairy-queen:
-    - dairy-queeen
-    - dairy-queen
+      - dairy-queeen
+      - dairy-queen
     uber-eats:
     arriba-burrito:
     sushi:
@@ -118,8 +121,8 @@ online-purchases:
     jb-games:
     michaels:
     amazon:
-    - amzn
-    - amazon
+      - amzn
+      - amazon.
 extra:
   keywords:
     winners:
@@ -138,15 +141,17 @@ banking_fee:
 andy_income:
   keywords:
     rental-income:
-    - keyword: interac-e-transfer
-      amount: 2100
-    infoprimes:
+      - keyword: interac-e-transfer
+        amount: 2100
+    salary:
+      - infoprimes
 alex_income:
   keywords:
     rental-income:
-    - keyword: interac-e-transfer
-      amount: 2925
-    alaya:
+      - keyword: interac-e-transfer
+        amount: 2925
+    salary:
+      - alaya
 scotia_credit_line:
   keywords:
     tf-0000000022182671725:
