@@ -108,7 +108,7 @@ def main():
     else:
         output_path = OUTPUT_PATH
     category_map = {
-        cat: list(rules.get('keywords', {}).keys())
+        cat: list(rules.get('subcategories', {}).keys())
         for cat, rules in categorizer.config.items()
     }
     reporter = ExcelReporter(output_path)

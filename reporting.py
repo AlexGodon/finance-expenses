@@ -7,6 +7,7 @@ from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Font, Alignment
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.worksheet.properties import Outline
+from helpers import col_range
 
 
 DATE_DISPLAY_FORMAT = '%d %b %Y'
@@ -80,11 +81,12 @@ class ExcelReporter:
 
         months = sorted(df['month'].unique())
 
+        data_ranges = {}
         for month in months:
             month_df = df[df['month'] == month].copy()
-            self._write_month_tab(wb, month, month_df)
+            data_ranges[month] = self._write_month_tab(wb, month, month_df)
 
-        self._write_year_summary(wb, df, months)
+        self._write_year_summary(wb, df, months, data_ranges)
 
         wb.save(self.file_path)
 
@@ -155,28 +157,47 @@ class ExcelReporter:
             summary = summary.sort_values('category')
         return summary
 
-    def _write_month_block(self, ws, month, month_df, summary, start_row):
+    def _get_month_data_range(self, wb, month):
+        """Return (first_row, last_row) of transaction data on a month tab."""
+        tab = _month_tab_name(month)
+        if tab not in wb.sheetnames:
+            return 3, 3
+        ws = wb[tab]
+        last_row = 2
+        for r in range(3, ws.max_row + 1):
+            val = ws.cell(row=r, column=1).value
+            if val is None or val == 'Suspected Duplicates':
+                break
+            last_row = r
+        return 3, last_row
+
+    def _write_month_block(self, ws, month, month_df, summary, start_row, data_range):
         """Write a single month's summary block. Returns next available row."""
         row_cursor = start_row
         tab = _month_tab_name(month)
         ref = f"'{tab}'"
+        ds, de = data_range
+        rc = col_range('C', ds, de)
+        rd = col_range('D', ds, de)
+        re_ = col_range('E', ds, de)
 
         ws.cell(row=row_cursor, column=1, value=_month_full_name(month)).font = BOLD_LARGE
         row_cursor += 1
 
         ws.cell(row=row_cursor, column=1, value='Total Income:')
         ws.cell(row=row_cursor, column=2,
-                value=f'=SUMIFS({ref}!C:C,{ref}!C:C,">"&0)')
+                value=f'=SUMIFS({ref}!{rc},{ref}!{rc},">"&0)')
+        income_row = row_cursor
         row_cursor += 1
 
         ws.cell(row=row_cursor, column=1, value='Total Expenses:')
         ws.cell(row=row_cursor, column=2,
-                value=f'=SUMIFS({ref}!C:C,{ref}!C:C,"<"&0)')
+                value=f'=SUMIFS({ref}!{rc},{ref}!{rc},"<"&0)')
         row_cursor += 1
 
         ws.cell(row=row_cursor, column=1, value='Net:')
         ws.cell(row=row_cursor, column=2,
-                value=f'=SUM({ref}!C:C)').font = BOLD
+                value=f'=B{income_row}+B{income_row + 1}').font = BOLD
         row_cursor += 2
 
         current_cat = None
@@ -198,7 +219,7 @@ class ExcelReporter:
 
             ws.cell(row=row_cursor, column=1, value=f"  {srow['subcategory']}")
             ws.cell(row=row_cursor, column=2,
-                    value=f'=SUMIFS({ref}!C:C,{ref}!D:D,"{srow["category"]}",{ref}!E:E,"{srow["subcategory"]}")')
+                    value=f'=SUMIFS({ref}!{rc},{ref}!{rd},"{srow["category"]}",{ref}!{re_},"{srow["subcategory"]}")')
 
             row_cursor += 1
 
@@ -211,9 +232,16 @@ class ExcelReporter:
         row_cursor += 2
         return row_cursor
 
-    def _write_year_summary(self, wb, df, months):
-        combined = self._read_all_month_tabs(wb)
-        combined['month'] = combined['date'].dt.to_period('M')
+    def _write_year_summary(self, wb, df, months, data_ranges):
+        current_months = set(df['month'].unique())
+
+        existing = self._read_all_month_tabs(wb)
+        if not existing.empty:
+            existing['month'] = existing['date'].dt.to_period('M')
+            preserved = existing[~existing['month'].isin(current_months)]
+            combined = pd.concat([df, preserved], ignore_index=True)
+        else:
+            combined = df.copy()
 
         years = sorted(combined['month'].apply(lambda m: m.year).unique())
 
@@ -238,20 +266,46 @@ class ExcelReporter:
             interest_parts = []
             for m in year_months:
                 tab = _month_tab_name(m)
+                dr = data_ranges.get(m) or self._get_month_data_range(wb, m)
+                rc = col_range('C', dr[0], dr[1])
+                rd = col_range('D', dr[0], dr[1])
                 interest_parts.append(
-                    f'SUMIFS(\'{tab}\'!C:C,\'{tab}\'!D:D,"interest-earned")'
+                    f'SUMIFS(\'{tab}\'!{rc},\'{tab}\'!{rd},"interest-earned")'
                 )
             ws.cell(row=row_cursor, column=2,
                     value='=' + '+'.join(interest_parts)).font = BOLD
             row_cursor += 2
 
             for month in year_months:
+                dr = data_ranges.get(month) or self._get_month_data_range(wb, month)
                 month_df = combined[combined['month'] == month]
                 summary = self._build_month_summary(month_df)
-                row_cursor = self._write_month_block(ws, month, month_df, summary, start_row=row_cursor)
+                row_cursor = self._write_month_block(ws, month, month_df, summary, start_row=row_cursor, data_range=dr)
 
             ws.column_dimensions['A'].width = 30
             ws.column_dimensions['B'].width = 15
+
+            instructions_col = 7  # column G
+            instructions = [
+                ("How to get monthly CSV files:", BOLD_LARGE),
+                ("Wealthsimple:", BOLD),
+                ("Click Settings (bottom left) > Accounts > Select Chequing >", None),
+                ("Documents > Monthly statements > Download CSV of desired month", None),
+                ("ScotiaBank:", BOLD),
+                ("Click Credit Card > In transactions > Set Date Range > Download as CSV", None),
+                ("CIBC:", BOLD),
+                ("Left side menu bar > Download Transactions > Select Account >", None),
+                ("Set Date Range > Download Transactions", None),
+            ]
+            for i, (text, font) in enumerate(instructions, start=1):
+                cell = ws.cell(row=i, column=instructions_col, value=text)
+                if font:
+                    cell.font = font
+            ws.column_dimensions['G'].width = 60
+
+            ws.cell(row=1, column=8, value="Activate virtual environment:").font = BOLD
+            ws.cell(row=2, column=8, value="source .venv/bin/activate")
+            ws.column_dimensions['H'].width = 35
 
     def _load_monthly_mappings(self):
         path = os.path.join('config', 'monthly_mappings.yml')
@@ -267,8 +321,7 @@ class ExcelReporter:
         """Build the SUMIFS formula string for column C based on the entry's formula type."""
         formula = entry.get('formula', {})
         ftype = formula.get('type', 'none')
-        def col(letter):
-            return f'{letter}{data_start}:{letter}{data_end}'
+        cr = col_range
 
         if ftype == 'none':
             return 0
@@ -277,8 +330,8 @@ class ExcelReporter:
             cat = formula.get('category', '')
             sub = formula.get('subcategory')
             if sub:
-                return f'=SUMIFS({col("C")},{col("D")},"{cat}",{col("E")},"{sub}")'
-            return f'=SUMIFS({col("C")},{col("D")},"{cat}")'
+                return f'=SUMIFS({cr("C", data_start, data_end)},{cr("D", data_start, data_end)},"{cat}",{cr("E", data_start, data_end)},"{sub}")'
+            return f'=SUMIFS({cr("C", data_start, data_end)},{cr("D", data_start, data_end)},"{cat}")'
 
         if ftype == 'lookups':
             parts = []
@@ -286,14 +339,14 @@ class ExcelReporter:
                 cat = lk.get('category', '')
                 sub = lk.get('subcategory')
                 if sub:
-                    parts.append(f'SUMIFS({col("C")},{col("D")},"{cat}",{col("E")},"{sub}")')
+                    parts.append(f'SUMIFS({cr("C", data_start, data_end)},{cr("D", data_start, data_end)},"{cat}",{cr("E", data_start, data_end)},"{sub}")')
                 else:
-                    parts.append(f'SUMIFS({col("C")},{col("D")},"{cat}")')
+                    parts.append(f'SUMIFS({cr("C", data_start, data_end)},{cr("D", data_start, data_end)},"{cat}")')
             return '=' + '+'.join(parts) if parts else 0
 
         if ftype == 'source_negatives':
             sources = formula.get('sources', [])
-            parts = [f'SUMIFS({col("C")},{col("F")},"{src}",{col("C")},"<"&0)' for src in sources]
+            parts = [f'SUMIFS({cr("C", data_start, data_end)},{cr("F", data_start, data_end)},"{src}",{cr("C", data_start, data_end)},"<"&0)' for src in sources]
             return '=' + '+'.join(parts)
 
         return 0
@@ -398,3 +451,5 @@ class ExcelReporter:
         ws.column_dimensions['D'].width = 18
         ws.column_dimensions['E'].width = 25
         ws.column_dimensions['F'].width = 12
+
+        return 3, tbl_last_row

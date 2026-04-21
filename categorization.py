@@ -21,17 +21,19 @@ class Categorizer:
 
             matched = False
             for category, rules in self.config.items():
-                keywords_map = rules.get('keywords', {})
-                if not isinstance(keywords_map, dict):
+                subcategories = rules.get('subcategories', {})
+                if not isinstance(subcategories, dict):
                     continue
-                for subcategory, keyword_list in keywords_map.items():
+                for subcategory, keyword_list in subcategories.items():
                     terms = keyword_list if keyword_list else [subcategory]
                     for term in terms:
                         if isinstance(term, dict):
                             kw = term.get('keyword', '')
                             amt = term.get('amount')
+                            amt2 = term.get('amount_2')
                             if kw in normalized and amt is not None \
-                                    and round(row['amount'], 2) == round(amt, 2):
+                                    and (round(row['amount'], 2) == round(amt, 2)
+                                         or (amt2 is not None and round(row['amount'], 2) == round(amt2, 2))):
                                 matched = True
                         elif term in normalized:
                             matched = True
