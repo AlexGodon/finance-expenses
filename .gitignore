@@ -12,6 +12,7 @@ past_ai_chats/*
 
 # Private config
 config/monthly_mappings.yml
+config/category_mappings.yml
 
 # IDE files
 .idea/
