@@ -455,41 +455,135 @@ def write_excel(rows, args, total_payment, output_path):
             year_summary[yr] = sr
             cur += 2
 
-    # ── Final summary ──
-    fr = cur + 1
-    ws.cell(row=fr, column=1, value="Final Summary").font = Font(
-        bold=True, size=12)
-    fr += 1
-
+    # ── Full summary (mirrors console output) ──
+    monthly_mtg_rate = calc_monthly_mortgage_rate(args.mortgage_rate)
+    monthly_heloc_rate = (args.heloc_rate / 100) / 12
+    real_heloc = args.heloc_rate * (1 - args.tax_bracket / 100)
     total_months = len(rows)
     yy, mm = divmod(total_months, 12)
+    total_mtg_interest = sum(r["inter_payment"] for r in rows)
+    total_orig_interest = calc_total_original_interest(
+        args.initial_amount, args.mortgage_rate, args.amortization,
+        args.frequency,
+    )
+    interest_saved = total_orig_interest - total_mtg_interest
+    final_heloc = rows[-1]["heloc_loan"]
+    total_heloc_interest = sum(r["full_pct_heloc"] for r in rows)
+    total_tax_refund = sum(r["tax_refund"] for r in rows)
+    net_heloc_cost = total_heloc_interest - total_tax_refund
+    net_savings = interest_saved - net_heloc_cost
 
-    labels_vals = [
-        ("Mortgage paid off in", f"{yy} years, {mm} months"),
-        ("Total original interest (no SM)",
-         calc_total_original_interest(args.initial_amount, args.mortgage_rate,
-                                     args.amortization, args.frequency)),
-        ("Total mtg interest (w/ SM)",
-         sum(r["inter_payment"] for r in rows)),
-        ("Mortgage interest saved", None),
-        ("Final HELOC balance", rows[-1]["heloc_loan"]),
-        ("Total HELOC interest",
-         sum(r["full_pct_heloc"] for r in rows)),
-        ("Total tax refunds",
-         sum(r["tax_refund"] for r in rows)),
+    section_font = Font(bold=True, size=12)
+    label_font = Font(bold=True)
+    sum_fill = PatternFill(start_color="D9E2F3", end_color="D9E2F3",
+                           fill_type="solid")
+
+    fr = cur + 1
+
+    # ── Input Values ──
+    ws.cell(row=fr, column=1, value="Input Values").font = section_font
+    fr += 1
+    input_rows = [
+        ("Initial Amount", args.initial_amount, curr),
+        ("Amortization", f"{args.amortization} years", None),
+        ("Mortgage Rate", args.mortgage_rate / 100, pct),
+        ("HELOC Rate", args.heloc_rate / 100, pct),
+        ("Tax Bracket", args.tax_bracket / 100, pct),
+        ("Rental Income", args.rental_income, curr),
+        ("Frequency", args.frequency.capitalize(), None),
     ]
-
-    for lbl, val in labels_vals:
-        ws.cell(row=fr, column=1, value=lbl).font = bold
-        if isinstance(val, str):
-            ws.cell(row=fr, column=2, value=val)
-        elif val is not None:
-            ws.cell(row=fr, column=2, value=round(val, 2))
-            ws.cell(row=fr, column=2).number_format = curr
-        else:
-            ws.cell(row=fr, column=2).value = f'=B{fr - 2}-B{fr - 1}'
-            ws.cell(row=fr, column=2).number_format = curr
+    for lbl, val, fmt in input_rows:
+        ws.cell(row=fr, column=1, value=lbl).font = label_font
+        c = ws.cell(row=fr, column=2, value=val)
+        if fmt:
+            c.number_format = fmt
         fr += 1
+
+    fr += 1  # blank row
+
+    # ── Calculated Values ──
+    ws.cell(row=fr, column=1, value="Calculated Values").font = section_font
+    fr += 1
+    calc_rows = [
+        ("Monthly Mortgage Rate", monthly_mtg_rate, pct6),
+        ("Monthly HELOC Rate", monthly_heloc_rate, pct6),
+        ("Monthly Payment", total_payment, curr),
+        ("Real HELOC Rate (after tax)", real_heloc / 100, pct),
+    ]
+    for lbl, val, fmt in calc_rows:
+        ws.cell(row=fr, column=1, value=lbl).font = label_font
+        c = ws.cell(row=fr, column=2, value=val)
+        c.number_format = fmt
+        fr += 1
+
+    fr += 1  # blank row
+
+    # ── Year-by-Year Summary table ──
+    ws.cell(row=fr, column=1, value="Year-by-Year Summary").font = section_font
+    fr += 1
+
+    yby_headers = ['Year', 'New Balance', 'HELOC Loan', 'Mtg Interest',
+                   'Extra Princ', 'Pay HELOC D']
+    for i, h in enumerate(yby_headers):
+        c = ws.cell(row=fr, column=i + 1, value=h)
+        c.font = hdr_font
+        c.fill = hdr_fill
+        c.alignment = Alignment(horizontal='center')
+    fr += 1
+
+    year_data = {}
+    for r in rows:
+        y = r["year"]
+        if y not in year_data:
+            year_data[y] = dict(inter_sum=0, extra_sum=0, end_balance=0,
+                                heloc_loan=0, D=r["pay_heloc_directly"])
+        year_data[y]["inter_sum"] += r["inter_payment"]
+        year_data[y]["extra_sum"] += r["extra_princ"]
+        year_data[y]["end_balance"] = r["new_balance"]
+        year_data[y]["heloc_loan"] = r["heloc_loan"]
+
+    for y in sorted(year_data):
+        d = year_data[y]
+        ws.cell(row=fr, column=1, value=y)
+        ws.cell(row=fr, column=2, value=round(d['end_balance'], 2))
+        ws.cell(row=fr, column=3, value=round(d['heloc_loan'], 2))
+        ws.cell(row=fr, column=4, value=round(d['inter_sum'], 2))
+        ws.cell(row=fr, column=5, value=round(d['extra_sum'], 2))
+        ws.cell(row=fr, column=6, value=d['D'])
+        for col in range(2, 6):
+            ws.cell(row=fr, column=col).number_format = curr
+        ws.cell(row=fr, column=6).number_format = '#,##0'
+        fr += 1
+
+    fr += 1  # blank row
+
+    # ── Final Results ──
+    ws.cell(row=fr, column=1, value="Final Results").font = section_font
+    fr += 1
+    final_rows = [
+        ("Mortgage paid off in", f"{yy} years, {mm} months", None),
+        ("Total orig. interest (no SM)", total_orig_interest, curr),
+        ("Total mtg interest (w/ SM)", total_mtg_interest, curr),
+        ("Mortgage interest saved", interest_saved, curr),
+        ("Final HELOC balance", final_heloc, curr),
+        ("Total HELOC interest", total_heloc_interest, curr),
+        ("Total tax refunds", total_tax_refund, curr),
+        ("Net HELOC cost", net_heloc_cost, curr),
+        ("Net overall savings", net_savings, curr),
+    ]
+    for lbl, val, fmt in final_rows:
+        ws.cell(row=fr, column=1, value=lbl).font = label_font
+        c = ws.cell(row=fr, column=2)
+        if fmt:
+            c.value = round(val, 2)
+            c.number_format = fmt
+        else:
+            c.value = val
+        fr += 1
+
+    # Highlight the net savings row
+    ws.cell(row=fr - 1, column=1).fill = sum_fill
+    ws.cell(row=fr - 1, column=2).fill = sum_fill
 
     # Column widths
     ws.column_dimensions['A'].width = 24
