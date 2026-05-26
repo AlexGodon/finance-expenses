@@ -321,7 +321,6 @@ def write_excel(rows, args, total_payment, output_path):
     ws['D7'] = '=B4*B7/(1-(1+B7)^(-C4*12))'; ws['D7'].number_format = curr
     ws['E7'] = '=E4*(1-F4)';                  ws['E7'].number_format = pct
 
-    # ── Column headers (row 9) ──
     DATA_HEADERS = [
         'Period', 'Princ. Payment', 'Inter Payment', 'Original Inter Paym.',
         'Total Payment', 'Ending Balance', 'Extra Princ. Paym.',
@@ -329,14 +328,9 @@ def write_excel(rows, args, total_payment, output_path):
         'Full % HELOC', 'Tax Refund', '% Inter. Paid',
         'Pay HELOC D', 'Orig. Balance',
     ]
-    for i, h in enumerate(DATA_HEADERS):
-        c = ws.cell(row=9, column=i + 1, value=h)
-        c.font = hdr_font
-        c.fill = hdr_fill
-        c.alignment = Alignment(horizontal='center')
 
     # ── Data rows ──
-    cur = 10
+    cur = 9
     prev = None
     current_year = 0
     year_first = {}
@@ -349,6 +343,12 @@ def write_excel(rows, args, total_payment, output_path):
 
         if yr != current_year:
             ws.cell(row=cur, column=1, value=f"Year {yr}").font = bold
+            cur += 1
+            for i, h in enumerate(DATA_HEADERS):
+                c = ws.cell(row=cur, column=i + 1, value=h)
+                c.font = hdr_font
+                c.fill = hdr_fill
+                c.alignment = Alignment(horizontal='center')
             cur += 1
             current_year = yr
             year_first[yr] = cur
