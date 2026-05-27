@@ -31,14 +31,14 @@
             "request": "launch",
             "program": "${workspaceFolder}/smith_manoeuvre.py",
             "args": [
-                "--initial-amount", "469636.99",
+                "--initial-amount", "470000.00",
                 "--amortization", "20",
-                "--mortgage-rate", "4.30",
-                "--heloc-rate", "5.45",
-                "--tax-bracket", "27.00",
+                "--mortgage-rate", "5.40",
+                "--heloc-rate", "7.00",
+                "--tax-bracket", "20.00",
                 "--rental-income", "2100.00",
                 "--frequency", "monthly",
-                "--output", "smith_manoeuvre_output.xlsx"
+                "--output", "smith_manoeuvre_7_percent.xlsx"
             ],
             "cwd": "${workspaceFolder}",
             "python": "${workspaceFolder}/.venv/bin/python",

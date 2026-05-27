@@ -74,14 +74,19 @@ def calc_mortgage_payment(principal, annual_rate_pct, amortization_years,
 
 def monthly_equivalent_payment(principal, annual_rate_pct, amortization_years,
                                frequency):
-    """Return the monthly-equivalent payment for any frequency."""
+    """Return the monthly-equivalent payment for any frequency.
+
+    Accelerated biweekly/weekly: take the monthly payment, divide by 2 (or 4),
+    pay 26 (or 52) times per year.  That yields 13 monthly payments per year
+    instead of 12, which is what accelerates the payoff.
+    """
+    monthly = calc_mortgage_payment(principal, annual_rate_pct,
+                                    amortization_years, "monthly")
     if frequency == "monthly":
-        return calc_mortgage_payment(principal, annual_rate_pct,
-                                     amortization_years, "monthly")
-    per_period = calc_mortgage_payment(principal, annual_rate_pct,
-                                       amortization_years, frequency)
-    periods_per_year = 26 if frequency == "biweekly" else 52
-    return per_period * periods_per_year / 12
+        return monthly
+    # Accelerated: monthly/2 * 26 / 12  =  monthly * 13/12  (biweekly)
+    #              monthly/4 * 52 / 12  =  monthly * 13/12  (weekly)
+    return monthly * 13 / 12
 
 
 def calc_yearly_heloc_payment(heloc_balance, monthly_heloc_rate,
