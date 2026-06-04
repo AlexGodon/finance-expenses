@@ -36,6 +36,8 @@ def parse_args():
                    help="Marginal tax bracket (e.g. 27 for 27%%)")
     p.add_argument("--rental-income", type=float, required=True,
                    help="Monthly rental income in dollars")
+    p.add_argument("--rental-rate-increase", type=float, default=0.0,
+                   help="Annual rental income increase (e.g. 2.0 for 2%%/year)")
     p.add_argument("--frequency", default="monthly",
                    choices=["monthly", "biweekly", "weekly"],
                    help="Payment frequency (default: monthly)")
@@ -122,11 +124,12 @@ def calc_total_original_interest(principal, annual_rate_pct,
 
 def simulate(initial_amount, amortization_years, mortgage_rate_pct,
              heloc_rate_pct, tax_bracket_pct, rental_income,
-             frequency="monthly"):
+             frequency="monthly", rental_rate_increase_pct=0.0):
     """Month-by-month Smith Manoeuvre simulation until mortgage = 0."""
     monthly_mtg_rate = calc_monthly_mortgage_rate(mortgage_rate_pct)
     monthly_heloc_rate = (heloc_rate_pct / 100) / 12
     tax_bracket = tax_bracket_pct / 100
+    rental_increase = rental_rate_increase_pct / 100
     total_payment = monthly_equivalent_payment(
         initial_amount, mortgage_rate_pct, amortization_years, frequency,
     )
@@ -138,6 +141,7 @@ def simulate(initial_amount, amortization_years, mortgage_rate_pct,
     heloc_room = 0.0
     prev_full_pct = 0.0
     D = 0
+    current_rental = rental_income
 
     month_num = 0
     max_months = amortization_years * 12 * 2
@@ -148,8 +152,10 @@ def simulate(initial_amount, amortization_years, mortgage_rate_pct,
         year = (month_num - 1) // 12 + 1
 
         if month_in_year == 1:
+            if year > 1:
+                current_rental = rental_income * (1 + rental_increase) ** (year - 1)
             D = calc_yearly_heloc_payment(heloc_loan, monthly_heloc_rate,
-                                          rental_income)
+                                          current_rental)
 
         # ── Mortgage ──
         inter_payment = new_balance * monthly_mtg_rate
@@ -161,7 +167,7 @@ def simulate(initial_amount, amortization_years, mortgage_rate_pct,
 
         ending_balance = new_balance - princ_payment
 
-        extra_princ = rental_income - D
+        extra_princ = current_rental - D
         extra_princ = min(extra_princ, max(ending_balance, 0))
 
         new_balance = max(ending_balance - extra_princ, 0)
@@ -170,9 +176,9 @@ def simulate(initial_amount, amortization_years, mortgage_rate_pct,
         heloc_room += princ_payment + extra_princ
 
         if month_num == 1:
-            heloc_loan = rental_income
+            heloc_loan = current_rental
         else:
-            heloc_loan = heloc_loan + prev_full_pct + rental_income - D
+            heloc_loan = heloc_loan + prev_full_pct + current_rental - D
 
         full_pct = heloc_loan * monthly_heloc_rate
         tax_refund = full_pct * tax_bracket
@@ -197,6 +203,7 @@ def simulate(initial_amount, amortization_years, mortgage_rate_pct,
             "tax_refund": tax_refund,
             "pct_inter_paid": pct_inter_paid,
             "pay_heloc_directly": D,
+            "rental_income": current_rental,
         })
 
         prev_full_pct = full_pct
@@ -224,6 +231,7 @@ def print_summary(rows, args, total_payment):
     print(f"    HELOC Rate:          {args.heloc_rate:.2f}%")
     print(f"    Tax Bracket:         {args.tax_bracket:.2f}%")
     print(f"    Rental Income:       ${args.rental_income:,.2f}/month")
+    print(f"    Rental Rate Incr.:    {args.rental_rate_increase:>6.2f}%/year")
     print(f"    Frequency:           {args.frequency.capitalize()}")
 
     print("\n  Calculated Values:")
@@ -238,7 +246,8 @@ def print_summary(rows, args, total_payment):
         if y not in years:
             years[y] = dict(inter_sum=0, extra_sum=0, heloc_inter_sum=0,
                             tax_refund_sum=0, end_balance=0, heloc_loan=0,
-                            D=r["pay_heloc_directly"])
+                            D=r["pay_heloc_directly"],
+                            rental=r["rental_income"])
         years[y]["inter_sum"] += r["inter_payment"]
         years[y]["extra_sum"] += r["extra_princ"]
         years[y]["heloc_inter_sum"] += r["full_pct_heloc"]
@@ -246,17 +255,17 @@ def print_summary(rows, args, total_payment):
         years[y]["end_balance"] = r["new_balance"]
         years[y]["heloc_loan"] = r["heloc_loan"]
 
-    hdr = (f"  {'Yr':>3}  {'New Balance':>14}  {'HELOC Loan':>14}"
+    hdr = (f"  {'Yr':>3}  {'Rent':>10}  {'New Balance':>14}  {'HELOC Loan':>14}"
            f"  {'Mtg Interest':>14}  {'Extra Princ':>14}  {'Pay HELOC D':>12}")
-    sep = (f"  {'---':>3}  {'-' * 14}  {'-' * 14}"
+    sep = (f"  {'---':>3}  {'-' * 10}  {'-' * 14}  {'-' * 14}"
            f"  {'-' * 14}  {'-' * 14}  {'-' * 12}")
 
     print(f"\n  Year-by-Year Summary:\n{hdr}\n{sep}")
     for y in sorted(years):
         d = years[y]
-        print(f"  {y:>3}  ${d['end_balance']:>13,.2f}  ${d['heloc_loan']:>13,.2f}"
-              f"  ${d['inter_sum']:>13,.2f}  ${d['extra_sum']:>13,.2f}"
-              f"  ${d['D']:>11,}")
+        print(f"  {y:>3}  ${d['rental']:>9,.2f}  ${d['end_balance']:>13,.2f}"
+              f"  ${d['heloc_loan']:>13,.2f}  ${d['inter_sum']:>13,.2f}"
+              f"  ${d['extra_sum']:>13,.2f}  ${d['D']:>11,}")
 
     total_months = len(rows)
     yy, mm = divmod(total_months, 12)
@@ -306,7 +315,7 @@ def write_excel(rows, args, total_payment, output_path):
 
     for i, lbl in enumerate(['', 'Initial Amount', 'Amortization (yr)',
                              'Mortgage Rate', 'HELOC Rate', 'Tax Bracket',
-                             'Rental Income']):
+                             'Rental Income', 'Rental Rate Increase']):
         ws.cell(row=3, column=i + 1, value=lbl).font = bold
 
     ws['B4'] = args.initial_amount;  ws['B4'].number_format = curr
@@ -315,6 +324,7 @@ def write_excel(rows, args, total_payment, output_path):
     ws['E4'] = args.heloc_rate / 100;     ws['E4'].number_format = pct
     ws['F4'] = args.tax_bracket / 100;    ws['F4'].number_format = pct
     ws['G4'] = args.rental_income;        ws['G4'].number_format = curr
+    ws['H4'] = args.rental_rate_increase / 100; ws['H4'].number_format = pct
 
     # ── Derived values (rows 6-7) ──
     for i, lbl in enumerate(['', 'Mo. Mtg Rate', 'Mo. HELOC Rate',
@@ -341,6 +351,7 @@ def write_excel(rows, args, total_payment, output_path):
     year_first = {}
     year_last = {}
     year_summary = {}
+    year_rental_row = {}
 
     for idx, rd in enumerate(rows):
         yr, mo, gm = rd['year'], rd['month'], rd['global_month']
@@ -348,6 +359,13 @@ def write_excel(rows, args, total_payment, output_path):
 
         if yr != current_year:
             ws.cell(row=cur, column=1, value=f"Year {yr}").font = bold
+            if yr == 1:
+                ws.cell(row=cur, column=2).value = '=$G$4'
+            else:
+                ws.cell(row=cur, column=2).value = f'=$G$4*(1+$H$4)^{yr - 1}'
+            ws.cell(row=cur, column=2).number_format = curr
+            ws.cell(row=cur, column=2).font = bold
+            year_rental_row[yr] = cur
             cur += 1
             for i, h in enumerate(DATA_HEADERS):
                 c = ws.cell(row=cur, column=i + 1, value=h)
@@ -362,12 +380,13 @@ def write_excel(rows, args, total_payment, output_path):
         ws.cell(row=r, column=1, value=f"Month {mo}")
 
         # O (15): Pay HELOC Directly
+        rent = f'B{year_rental_row[yr]}'
         if mo == 1:
             if yr == 1:
-                f15 = '=CEILING($G$4*(1-(1+$C$7)^(-12)),1)'
+                f15 = f'=CEILING({rent}*(1-(1+$C$7)^(-12)),1)'
             else:
                 pl = year_last[yr - 1]
-                f15 = f'=CEILING(K{pl}*$C$7+$G$4*(1-(1+$C$7)^(-12)),1)'
+                f15 = f'=CEILING(K{pl}*$C$7+{rent}*(1-(1+$C$7)^(-12)),1)'
         else:
             f15 = f'=O{year_first[yr]}'
         ws.cell(row=r, column=15).value = f15
@@ -397,7 +416,7 @@ def write_excel(rows, args, total_payment, output_path):
             ws.cell(row=r, column=6).value = f'=H{prev}-B{r}'
 
         # G (7): Extra Princ. Paym.
-        ws.cell(row=r, column=7).value = f'=MIN($G$4-O{r},MAX(F{r},0))'
+        ws.cell(row=r, column=7).value = f'=MIN({rent}-O{r},MAX(F{r},0))'
 
         # H (8): New Balance
         ws.cell(row=r, column=8).value = f'=MAX(F{r}-G{r},0)'
@@ -410,9 +429,9 @@ def write_excel(rows, args, total_payment, output_path):
 
         # K (11): HELOC Loan
         if gm == 1:
-            ws.cell(row=r, column=11).value = '=$G$4'
+            ws.cell(row=r, column=11).value = f'={rent}'
         else:
-            ws.cell(row=r, column=11).value = f'=K{prev}+L{prev}+$G$4-O{r}'
+            ws.cell(row=r, column=11).value = f'=K{prev}+L{prev}+{rent}-O{r}'
 
         # L (12): Full % HELOC
         ws.cell(row=r, column=12).value = f'=K{r}*$C$7'
@@ -495,6 +514,7 @@ def write_excel(rows, args, total_payment, output_path):
         ("HELOC Rate", args.heloc_rate / 100, pct),
         ("Tax Bracket", args.tax_bracket / 100, pct),
         ("Rental Income", args.rental_income, curr),
+        ("Rental Rate Incr.", args.rental_rate_increase / 100, pct),
         ("Frequency", args.frequency.capitalize(), None),
     ]
     for lbl, val, fmt in input_rows:
@@ -527,8 +547,8 @@ def write_excel(rows, args, total_payment, output_path):
     ws.cell(row=fr, column=1, value="Year-by-Year Summary").font = section_font
     fr += 1
 
-    yby_headers = ['Year', 'New Balance', 'HELOC Loan', 'Mtg Interest',
-                   'Extra Princ', 'Pay HELOC D']
+    yby_headers = ['Year', 'Rent', 'New Balance', 'HELOC Loan',
+                   'Mtg Interest', 'Extra Princ', 'Pay HELOC D']
     for i, h in enumerate(yby_headers):
         c = ws.cell(row=fr, column=i + 1, value=h)
         c.font = hdr_font
@@ -541,7 +561,8 @@ def write_excel(rows, args, total_payment, output_path):
         y = r["year"]
         if y not in year_data:
             year_data[y] = dict(inter_sum=0, extra_sum=0, end_balance=0,
-                                heloc_loan=0, D=r["pay_heloc_directly"])
+                                heloc_loan=0, D=r["pay_heloc_directly"],
+                                rental=r["rental_income"])
         year_data[y]["inter_sum"] += r["inter_payment"]
         year_data[y]["extra_sum"] += r["extra_princ"]
         year_data[y]["end_balance"] = r["new_balance"]
@@ -550,14 +571,15 @@ def write_excel(rows, args, total_payment, output_path):
     for y in sorted(year_data):
         d = year_data[y]
         ws.cell(row=fr, column=1, value=y)
-        ws.cell(row=fr, column=2, value=round(d['end_balance'], 2))
-        ws.cell(row=fr, column=3, value=round(d['heloc_loan'], 2))
-        ws.cell(row=fr, column=4, value=round(d['inter_sum'], 2))
-        ws.cell(row=fr, column=5, value=round(d['extra_sum'], 2))
-        ws.cell(row=fr, column=6, value=d['D'])
-        for col in range(2, 6):
+        ws.cell(row=fr, column=2, value=round(d['rental'], 2))
+        ws.cell(row=fr, column=3, value=round(d['end_balance'], 2))
+        ws.cell(row=fr, column=4, value=round(d['heloc_loan'], 2))
+        ws.cell(row=fr, column=5, value=round(d['inter_sum'], 2))
+        ws.cell(row=fr, column=6, value=round(d['extra_sum'], 2))
+        ws.cell(row=fr, column=7, value=d['D'])
+        for col in range(2, 7):
             ws.cell(row=fr, column=col).number_format = curr
-        ws.cell(row=fr, column=6).number_format = '#,##0'
+        ws.cell(row=fr, column=7).number_format = '#,##0'
         fr += 1
 
     fr += 1  # blank row
@@ -565,30 +587,50 @@ def write_excel(rows, args, total_payment, output_path):
     # ── Final Results ──
     ws.cell(row=fr, column=1, value="Final Results").font = section_font
     fr += 1
-    final_rows = [
-        ("Mortgage paid off in", f"{yy} years, {mm} months", None),
-        ("Total orig. interest (no SM)", total_orig_interest, curr),
-        ("Total mtg interest (w/ SM)", total_mtg_interest, curr),
-        ("Mortgage interest saved", interest_saved, curr),
-        ("Final HELOC balance", final_heloc, curr),
-        ("Total HELOC interest", total_heloc_interest, curr),
-        ("Total tax refunds", total_tax_refund, curr),
-        ("Net HELOC cost", net_heloc_cost, curr),
-        ("Net overall savings", net_savings, curr),
-    ]
-    for lbl, val, fmt in final_rows:
-        ws.cell(row=fr, column=1, value=lbl).font = label_font
-        c = ws.cell(row=fr, column=2)
+
+    def _fval(row, label, val, fmt):
+        ws.cell(row=row, column=1, value=label).font = label_font
+        c = ws.cell(row=row, column=2)
         if fmt:
-            c.value = round(val, 2)
+            c.value = round(val, 2) if isinstance(val, (int, float)) else val
             c.number_format = fmt
         else:
             c.value = val
-        fr += 1
+        return row
+
+    r_payoff = _fval(fr, "Mortgage paid off in",
+                      f"{yy} years, {mm} months", None);             fr += 1
+    r_orig   = _fval(fr, "Total orig. interest (no SM)",
+                      total_orig_interest, curr);                     fr += 1
+    r_mtg    = _fval(fr, "Total mtg interest (w/ SM)",
+                      total_mtg_interest, curr);                      fr += 1
+
+    r_saved  = fr
+    ws.cell(row=fr, column=1, value="Mortgage interest saved").font = label_font
+    ws.cell(row=fr, column=2).value = f'=B{r_orig}-B{r_mtg}'
+    ws.cell(row=fr, column=2).number_format = curr;                   fr += 1
+
+    r_heloc_bal = _fval(fr, "Final HELOC balance",
+                         final_heloc, curr);                          fr += 1
+
+    r_heloc_int = _fval(fr, "Total HELOC interest",
+                         total_heloc_interest, curr);                 fr += 1
+    r_tax_ref   = _fval(fr, "Total tax refunds",
+                         total_tax_refund, curr);                     fr += 1
+
+    r_net_heloc = fr
+    ws.cell(row=fr, column=1, value="Net HELOC cost").font = label_font
+    ws.cell(row=fr, column=2).value = f'=B{r_heloc_int}-B{r_tax_ref}'
+    ws.cell(row=fr, column=2).number_format = curr;                   fr += 1
+
+    r_net_save = fr
+    ws.cell(row=fr, column=1, value="Net overall savings").font = label_font
+    ws.cell(row=fr, column=2).value = f'=B{r_saved}-B{r_net_heloc}'
+    ws.cell(row=fr, column=2).number_format = curr;                   fr += 1
 
     # Highlight the net savings row
-    ws.cell(row=fr - 1, column=1).fill = sum_fill
-    ws.cell(row=fr - 1, column=2).fill = sum_fill
+    ws.cell(row=r_net_save, column=1).fill = sum_fill
+    ws.cell(row=r_net_save, column=2).fill = sum_fill
 
     # Column widths
     ws.column_dimensions['A'].width = 24
@@ -615,6 +657,7 @@ def main():
         tax_bracket_pct=args.tax_bracket,
         rental_income=args.rental_income,
         frequency=args.frequency,
+        rental_rate_increase_pct=args.rental_rate_increase,
     )
 
     print_summary(rows, args, total_payment)

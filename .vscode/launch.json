@@ -33,12 +33,33 @@
             "args": [
                 "--initial-amount", "470000.00",
                 "--amortization", "20",
-                "--mortgage-rate", "5.40",
-                "--heloc-rate", "7.00",
-                "--tax-bracket", "20.00",
+                "--mortgage-rate", "4.20",
+                "--heloc-rate", "5.45",
+                "--tax-bracket", "27.00",
                 "--rental-income", "2100.00",
+                "--rental-rate-increase", "2.00",
                 "--frequency", "monthly",
-                "--output", "smith_manoeuvre_7_percent.xlsx"
+                "--output", "smith_manoeuvre_4.20_2.00.xlsx"
+            ],
+            "cwd": "${workspaceFolder}",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "console": "internalConsole",
+            "justMyCode": false,
+        },
+        {
+            "name": "Run smith_manoeuvre_bonnie",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/smith_manoeuvre.py",
+            "args": [
+                "--initial-amount", "750000.00",
+                "--amortization", "30",
+                "--mortgage-rate", "3.70",
+                "--heloc-rate", "4.80",
+                "--tax-bracket", "20.00",
+                "--rental-income", "400.00",
+                "--frequency", "monthly",
+                "--output", "smith_manoeuvre_bonnie.xlsx"
             ],
             "cwd": "${workspaceFolder}",
             "python": "${workspaceFolder}/.venv/bin/python",
